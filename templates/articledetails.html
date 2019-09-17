@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container">
+    <div class="con_content">
+      <div class="about_box">
+        <h2 class="nh1"><span>您现在的位置是：<a href="/" target="_blank">网站首页</a>>><a href="#" target="_blank">信息浏览</a></span><b>个人简介</b></h2>
+        <div class="f_box">
+          <p class="a_title">{{ article.title }}</p>
+          <p class="p_title"></p>
+
+        </div>
+        <ul class="about_content">
+          <p> {{ article.content | safe}}</p>
+          <p><img src="/static/{{ article.picture }}"></p>
+          <p>“冥冥中该来则来，无处可逃”。 </p>
+        </ul>
+      </div>
+    </div>
+    <div class="blank"></div>
+  </div>
+{% endblock %}
+{% block js_css %}
+<link href="/static/css/main.css" rel="stylesheet">
+{% endblock %}
