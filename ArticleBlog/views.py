@@ -1,41 +1,51 @@
-from django.http import HttpResponse
+from django.http import HttpResponse,JsonResponse
 from django.template import Template,Context
 from django.shortcuts import render
 from Article.models import *
 from django.core.paginator import Paginator
+
+# import json
+# json.dump() # 序列化
+# json.loads() # 反序列化
+
+
 def test(request):
     return HttpResponse('hello')
+#登录装饰器
+def loginVaild(fun):
+    def inner(request,*args,**kwargs):
+        username = request.COOKIES.get('name')
+        if username:
+            return fun(request,*args,**kwargs)
+        else:
+            # url = request.META.get('REFERE')
+            return HttpResponseRedirect('/login/')
+    return inner
+
+
+@loginVaild
 def about(request):
-    return render(request, 'about.html')
+    username = request.COOKIES.get('name')
+    user = User.objects.filter(id=id).first()
+    return render(request, 'about.html',locals())
+
+
+
+
 def index(request):
+    """
+    查询6条数据
+    查询推荐的七条数据
+    查询点击率排行榜的12条数据
+    """
     article = Article.objects.order_by('-date')[:6]
-    recommend_article = Article.objects.filter(recommend=1).all()[:7]
+    recommend_article = Article.objects.all()[:7]
     click_article = Article.objects.order_by('-click')[:12]
     return render(request, 'index.html',locals())
+
 def listpic(request):
     return render(request, 'listpic.html')
-def newslistpic(request,page=1):
-    page = int(page)
-    article = Article.objects.order_by('-date')
-    # print(article)
-    paginator = Paginator(article,6) # 每页显示6条数据
-    page_obj = paginator.page(page)
-    # 获取当前页
-    current_page = page_obj.number
-    start = current_page - 3
-    if start < 1:
-        start = 0
-    end = current_page + 2
-    if end > paginator.num_pages:
-        end = paginator.num_pages
-    if start == 0:
-        end = 5
-    page_range = paginator.page_range[start:end]
-    print(page_obj)
 
-
-
-    return render(request, 'newslistpic.html',locals())
 def base(request):
     return render(request, 'base.html')
 def articledetails(request,id):
@@ -45,16 +55,29 @@ def articledetails(request,id):
     return render(request,'articledetails.html', locals())
 
 def addarticle(request):
-    for x in range(100):
-        article = Article()
-        article.title = 'title_%s' % x
-        article.content = 'content_%s' % x
-        article.description = 'description_%s' % x
-        article.author = Author.objects.get(id=1)
-        article.save()
-        article.type.add(Type.objects.get(id=1))
-        article.save()
-    return HttpResponse('增加数据')
+    goods_type = Type.objects.all()
+    if request.method == 'POST':
+        error_msg = ''
+        titlename = request.POST.get('title')
+        if titlename:
+            title = Article.objects.filter(title=titlename).first()
+            if not title:
+                article = Article()
+                article.title = titlename
+                article.date = request.POST.get('date')
+                article.content = request.POST.get('content')
+                article.description = request.POST.get('description')
+                article.picture = request.FILES.get('picture')
+                article.author_id = request.COOKIES.get('user_id')
+                article.save()
+                type = request.POST.get('goods_type')
+                article.type.add(type)
+                article.save()
+            else:
+                error_msg = '文章已存在'
+        else:
+            error_msg = '文章名不能为空'
+    return render(request,'addarticle.html',locals())
 
 def fytest(request):
     # 使用Django自带分页Paginator的时候，元数据要增排序属性
@@ -96,12 +119,13 @@ def reqtest(request):
     # print(request)
     # print(dir(request))
     # print(request.COOKIES)
-    print(request.FILES)
+    # print(request.FILES)
     # print(request.GET)
+    # print(request.POST)
     # print(request.scheme)
     # print(request.method)
     # print(request.path)
-    # print(request.body)
+    print(request.body)
     # meta = request.META
     # print(meta)
     # for key in meta:
@@ -116,22 +140,22 @@ def reqtest(request):
     return HttpResponse('请求测试')
 
 def formtest(request):
-    # # get 请求
-    # data = request.GET
-    # serach = data.get('serach')
-    # print(serach)
-    # # 通过form提交的数据，判断数据库中是否存在某个文章
-    # # 通过模型进行查询
-    # if serach:
-    #     article = Article.objects.filter(title__contains=serach).all()
-    #     print(article)
+    # get 请求
+    data = request.GET
+    serach = data.get('serach')
+    print(serach)
+    # 通过form提交的数据，判断数据库中是否存在某个文章
+    # 通过模型进行查询
+    if serach:
+        article = Article.objects.filter(title__contains=serach).all()
+        print(article)
 
 
-    print(request.method)
-    data = request.POST
-    print(data.get('username'))
-    print(data.get('password'))
-
+    # print(request.method)
+    # data = request.POST
+    # print(data.get('username'))
+    # print(data.get('password'))
+    #
     return render(request,'formtest.html',locals())
     # return render_to_reponse('formtest.html',locals())
 
@@ -144,43 +168,136 @@ def setPassword(password):
     result = md5.hexdigest()
     return result
 
-from Article.forms import Register
+
+
+def ajax_get(request):
+    return render(request,'ajax_get.html')
+
+def ajax_get_data(request):
+    result = {"code":10000,"content":""}
+    data = request.GET
+    username = data.get('username')
+    password = data.get('password')
+    if username is None or password is None:
+        result['code'] = 10001
+        result['content'] = '请求参数为空'
+    else:
+        user = User.objects.filter(name=username,password=setPassword(password)).first()
+        if user:
+            result['code'] = 10000
+            result['content'] = '用户可登陆'
+        else:
+            result['code'] = 10002
+            result['content'] = '用户不存在或者密码错误'
+    # result['content'] = "成功拿到数据"
+
+    # 返回一个json对象
+    return JsonResponse(result)
+    # return HttpResponse('这是ajax提交数据')
+
+
+def ajax_post(request):
+    # 调用页面
+    return render(request,'ajax_post.html')
+def ajax_post_data(request):
+    # 注册
+    result = {"code":10000,"content":""}
+    # print(request.POST)
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    user = User()
+    # 注册
+    if username == '' or password == '':
+        result['code'] = 10001
+        result['content'] = '请求参数为空'
+    else:
+        # 添加用户
+        user = User()
+        user.name = username
+        user.password=setPassword(password)
+        try:
+            user.save()
+            result["code"] = 10000
+            result['content'] = '添加数据成功'
+        except:
+            result['code'] = 10002
+            result['content'] = '添加数据失败'
+        # user = User.objects.filter(name=username,password=setPassword(password)).first()
+        # if user:
+        #     result['code'] = 10000
+        #     result['content'] = '用户可登陆'
+        # else:
+        #     result['code'] = 10002
+        #     result['content'] = '用户不存在或者密码错误'
+    # print(username)
+    # print(password)
+    return JsonResponse(result)
+
+
+
+def checkusername(request):
+    result = {'code':10001,'content':''}
+    #get 请求
+    username = request.GET.get("name")
+    print(username)
+    # 判断用户是否存在
+    user = User.objects.filter(name=username).first()
+    if user:
+        # 存在
+        result = {'code': 10001, 'content': '用户名已存在'}
+    else:
+        result = {'code': 10000, 'content': '用户名可以使用'}
+
+    return JsonResponse(result)
+
+# 重定向  300问题
+from django.http import HttpResponseRedirect
+def login(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        # print(username)
+        # print(password)
+        # 校验
+        user = User.objects.filter(name=username,password=setPassword(password)).first()
+        if user:
+            # 用户存在并且密码正确
+            if user.password == setPassword(password):
+                # 密码正确
+                # 跳转首页  状态码  300 重定向
+                # return HttpResponseRedirect('/index/')
+                response = HttpResponseRedirect('/index/')
+                response.set_cookie('name','hello')
+                response.set_cookie('user_id',user.id)
+                request.session['username']=username
+                return response
+
+    return render(request,'login.html')
+
+def logout(request):
+    response = HttpResponseRedirect('/index/')
+    response.delete_cookie('name')
+    # 删除session  目的是用户再次使用相同的sessionid 进行访问，那倒的session的值是不一样的
+    del request.session['username'] # 删除指定session  删除的是保存在服务器上面的session的值
+    # request.session.flush() # 删除所有的session
+    return response
+
 def register(request):
 
-    register_form = Register() # 创建一个form表单类的实例对象
-    error = ''
-    # 获取用户输入的数据
     if request.method == 'POST':
-        # 获取用户输入的数据
-        # username = request.POST.get('username')
-        # username = request.POST.get('name')
-        # password = request.POST.get('password')
-        # password2 = request.POST.get('password2')
-
-
-
-        # content = '参数不全'
-        # if username and password:
-        #     user = User()
-        #     user.name = username
-        #     # 判断密码是否相等
-        #     user.password = setPassword(password)
-        #     user.save()
-        #     content = '添加成功'
-
-        data = Register(request.POST)  # 将post请求传递过来的数据，交给form表单类进行校验
-        if data.is_valid():  # 判断校验是否通过，如果返回一个True，否则False
-            clean_data = data.cleaned_data  # 返回一个字典类型，数据通过校验的数据
-            # 获取到数据，写库
-            username = clean_data.get('name')
-            password = clean_data.get('password')
-            user = User()
-            user.name = username
-            # 加密密码
-            user.password = setPassword(password)
-            user.save()
-            error = '添加数据成功'
+        error_msg = ''
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        if username:
+            user = User.objects.filter(name=username).first()
+            if not user:
+                user = User()
+                user.name = username
+                user.password = setPassword(password)
+                user.save()
+            else:
+                error_msg = '用户名已存在'
         else:
-            error = data.errors
-            print(error)
+            error_msg = '用户名不能为空'
+
     return render(request,'register.html',locals())

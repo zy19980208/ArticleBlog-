@@ -4,6 +4,7 @@
 {% block content %}
   <div class="jztop"></div>
   <div class="container">
+  <div>
     <div class="bloglist f_l">
         {% for one in article %}
             <h3><a href="/articledetails/{{ one.id }}">{{ one.title }}</a></h3>
@@ -17,6 +18,7 @@
 
 
     </div>
+
     <div class="r_box f_r">
       <div class="tit01">
         <h3 class="tit">关注我</h3>
@@ -51,6 +53,7 @@
       </div>
       <div class="ad"> <img src="/static/images/03.jpg"> </div>
     </div>
+  </div>
   </div>
   <!-- container代码 结束 -->
   <div class="jzend"></div>

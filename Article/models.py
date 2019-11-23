@@ -45,10 +45,6 @@ class Article(models.Model):
     # 图片类型
     # upload_to 指定文件上传位置  static目录下的images目录中
     picture = models.ImageField(upload_to='images')
-    # 推荐
-    recommend = models.IntegerField(verbose_name='推荐',default=0)
-    # 点击率
-    click = models.IntegerField(verbose_name='点击率',default=0)
     author = models.ForeignKey(to=Author,on_delete=models.SET_DEFAULT,default=1)
     type = models.ManyToManyField(to=Type)
 
@@ -69,18 +65,8 @@ class User(models.Model):
         db_table = 'user'
 
 
-from django import forms
-class Register(forms.Form):
-    name = forms.CharField(required=True,label='姓名')
-    password = forms.CharField(max_length=8,min_length=6,label='密码')
 
-    # 固定写法
-    def clean_name(self):
-        """
-        自定义校验   用户名不允许是admin
-        """
-        name = self.cleaned_data.get('name')
-        if name =='admin':
-            self.add_error('name','不可以是admin')
-        else:
-            return name
+
+
+
+
